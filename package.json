@@ -1,0 +1,58 @@
+{
+  "dependencies": {
+    "@badrap/result": "^0.2.13",
+    "chessground": "^9.1.1",
+    "chessops": "^0.14.1",
+    "lichess-pgn-viewer": "^2.1.0"
+  },
+  "overrides": {
+    "chessops": "^0.14.1"
+  },
+  "name": "invisible-kings",
+  "description": "",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.10.0",
+    "@typescript-eslint/parser": "^8.6.0",
+    "@webpack-cli/generators": "^3.0.7",
+    "css-loader": "^7.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-import-resolver-typescript": "^3.6.3",
+    "globals": "^15.9.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.1",
+    "prettier": "^3.3.3",
+    "sass": "^1.78.0",
+    "sass-loader": "^16.0.1",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.6.0",
+    "webpack": "^5.94.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0",
+    "workbox-webpack-plugin": "^7.1.0"
+  },
+  "scripts": {
+    "build": "webpack --mode=production --node-env=production",
+    "build:dev": "webpack --mode=development",
+    "build:prod": "webpack --mode=production --node-env=production",
+    "watch": "webpack --watch",
+    "serve": "webpack serve",
+    "lint": "npx eslint --ignore-pattern dist/ --ignore-pattern types/ ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noedne/invisible-kings.git"
+  },
+  "author": "noedne",
+  "license": "GPL-3.0-only",
+  "bugs": {
+    "url": "https://github.com/noedne/invisible-kings/issues"
+  },
+  "homepage": "https://github.com/noedne/invisible-kings#readme",
+  "type": "commonjs"
+}
