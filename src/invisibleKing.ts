@@ -1,49 +1,39 @@
-import { Result } from '@badrap/result';
 import {
+  makeUci,
   type Move,
   type Outcome,
   Position,
-  type PositionError,
-  type Setup,
   type Square,
   SquareSet,
 } from 'chessops';
 import { kingAttacks } from 'chessops/attacks';
-import Status from './status';
+import { scalachessCharPair } from 'chessops/compat';
+import { makeFen, parseFen } from 'chessops/fen';
+import { makeSanAndPlay } from 'chessops/san';
+import type { Path } from 'lichess-pgn-viewer/path';
+import { Status, type Initial, type MoveData } from './types';
 
 export default class InvisibleKing extends Position {
-  kings = SquareSet.empty();
-  newKings = SquareSet.empty();
+  kings: SquareSet;
+  newKings: SquareSet;
 
-  private constructor() {
+  public constructor(fen?: string) {
     super('chess');
-  }
-
-  override reset() {
-    super.reset();
-    this.kings = SquareSet.empty();
+    if (fen === undefined) {
+      this.reset();
+      for (const sq of this.board.black.union(this.board.pawn)) {
+        this.board.take(sq);
+      }
+    } else {
+      this.setupUnchecked(parseFen(fen).unwrap());
+    }
     this.newKings = SquareSet.empty();
-  }
-
-  protected override setupUnchecked(setup: Setup) {
-    super.setupUnchecked(setup);
+    this.kings = SquareSet.empty();
     for (const sq of SquareSet.full().diff(this.board.white)) {
       if (this.isSafe(sq)) {
         this.kings = this.kings.with(sq);
       }
     }
-  }
-
-  static default(): InvisibleKing {
-    const pos = new this();
-    pos.reset();
-    return pos;
-  }
-
-  static fromSetup(setup: Setup): Result<InvisibleKing, PositionError> {
-    const pos = new this();
-    pos.setupUnchecked(setup);
-    return Result.ok(pos);
   }
 
   override clone() {
@@ -73,75 +63,111 @@ export default class InvisibleKing extends Position {
           isMate = false;
       }
     }
-    if (isMate) {
-      return { winner: 'white' };
-    }
-    return undefined;
+    return isMate ? { winner: 'white' } : undefined;
   }
 
   override toSetup() {
     const setup = super.toSetup();
-    for (const king of this.kings) {
+    let king = this.board.kingOf('black');
+    if (king !== undefined && !this.kings.has(king)) {
+      setup.board.take(king);
+    }
+    for (king of this.kings) {
       setup.board.set(king, { role: 'king', color: 'black' });
     }
     return setup;
+  }
+
+  toInitial(): Initial {
+    return {
+      fen: makeFen(this.toSetup()),
+      turn: this.turn,
+      check: this.isCheck(),
+      comments: [],
+      shapes: [],
+      clocks: {},
+      pos: this.clone(),
+    };
   }
 
   override isCheck() {
     return false;
   }
 
+  playAndMakeData(move: Move, path: Path): MoveData {
+    const san = makeSanAndPlay(this, move);
+    return {
+      ...this.toInitial(),
+      path: path.append(scalachessCharPair(move)),
+      ply: (this.fullmoves - 1) * 2 + (this.turn === 'white' ? 0 : 1),
+      move,
+      san,
+      uci: makeUci(move),
+      startingComments: [],
+      nags: [],
+    };
+  }
+
   override play(move: Move) {
-    if (this.turn === 'white') {
-      super.play(move);
-      return;
+    if (this.turn === 'black') {
+      let kings = SquareSet.empty();
+      for (const king of this.kings) {
+        kings = kings.union(this.nearbyHelper(king).safeNearby);
+      }
+      this.newKings = kings.diff(this.kings);
+      this.kings = kings;
     }
-    let kings = SquareSet.empty();
-    for (const king of this.kings) {
-      kings = kings.union(this.nearbyHelper(king).safeNearby);
-    }
-    this.newKings = kings.diff(this.kings);
-    this.kings = kings;
     super.play(move);
   }
 
   status(king: Square): { status: Status; arrows?: [Square, Square][] } {
-    const { nearbyAttackers, safeNearby } = this.nearbyHelper(king);
-    if (safeNearby.isEmpty()) {
-      return this.isSafe(king)
-        ? { status: Status.stalemate, arrows: nearbyAttackers }
-        : { status: Status.mate };
-    }
-    const captures = kingAttacks(king)
-      .intersect(this.board.king)
-      .union(safeNearby)
-      .intersect(this.board.white);
+    const { captures, nearbyAttackers, safeNearby } = this.nearbyHelper(king);
     if (captures.nonEmpty()) {
       return {
         status: Status.capture,
         arrows: Array.from(captures, (capture) => [king, capture]),
       };
     }
-    return { status: this.isSafe(king) ? Status.none : Status.check };
+    const isCheck = !this.isSafe(king);
+    const canMove = safeNearby.nonEmpty();
+    switch (true) {
+      case isCheck && canMove:
+        return { status: Status.check };
+      case isCheck && !canMove:
+        return { status: Status.mate };
+      case !isCheck && !canMove:
+        return { status: Status.stalemate, arrows: nearbyAttackers };
+      default:
+        return { status: Status.none };
+    }
   }
 
   private nearbyHelper(king: Square): {
+    captures: SquareSet;
     nearbyAttackers: [Square, Square][];
     safeNearby: SquareSet;
   } {
+    let captures = SquareSet.empty();
     const nearbyAttackers: [Square, Square][] = [];
     let safeNearby = SquareSet.empty();
+    const whiteKing = this.board.kingOf('white');
     for (const nearby of kingAttacks(king)) {
       const attackers = this.whiteAttackers(nearby);
       if (attackers.isEmpty()) {
         safeNearby = safeNearby.with(nearby);
+        if (this.board.getColor(nearby) === 'white') {
+          captures = captures.with(nearby);
+        }
       } else {
         for (const attacker of attackers) {
           nearbyAttackers.push([attacker, nearby]);
         }
+        if (nearby === whiteKing) {
+          captures = captures.with(nearby);
+        }
       }
     }
-    return { nearbyAttackers, safeNearby };
+    return { captures, nearbyAttackers, safeNearby };
   }
 
   private isSafe(square: Square): boolean {

@@ -37,10 +37,6 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
-    files: configs,
-    ...tseslint.configs.disableTypeChecked,
-  },
-  {
     rules: {
       'class-methods-use-this': 'off',
       '@typescript-eslint/class-methods-use-this': [
@@ -89,6 +85,13 @@ export default tseslint.config(
           classes: false,
         },
       ],
+      'object-curly-newline': 'off',
+      'operator-linebreak': 'off',
+      '@typescript-eslint/strict-boolean-expressions': 'error',
     },
+  },
+  {
+    files: configs,
+    ...tseslint.configs.disableTypeChecked,
   },
 );
