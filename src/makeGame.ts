@@ -37,7 +37,10 @@ export default function makeGame(
     white: { isLichessUser: false },
     black: { isLichessUser: false },
   };
-  const metadata = { isLichess: false };
+  const metadata = {
+    isLichess: false,
+    result: game.headers.get('Result') ?? '*',
+  };
   return new Constructor(initial, moves, players, metadata);
 }
 

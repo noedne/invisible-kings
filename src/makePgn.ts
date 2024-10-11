@@ -2,6 +2,7 @@ import { kingAttacks, makeSquare, type Square } from 'chessops';
 import {
   extend,
   isChildNode,
+  makeOutcome,
   makePgn as makePgnChessops,
   Node,
   type PgnNodeData,
@@ -15,9 +16,15 @@ import type { MoveData } from './makeMove';
 
 export default function makePgn(game: Game, path: Path): string {
   const moves = new Node<PgnNodeData>();
-  const king = pickKing(moves, game.moves, path, game.initial);
+  const { king, result } = pickKing(moves, game.moves, path, game.initial);
   const fen = makeFen(game.initial.pos, [king]);
-  return makePgnChessops({ headers: new Map([['FEN', fen]]), moves });
+  return makePgnChessops({
+    headers: new Map([
+      ['FEN', fen],
+      ['Result', result],
+    ]),
+    moves,
+  });
 }
 
 function pickKing(
@@ -25,14 +32,15 @@ function pickKing(
   gameNode: Node<MoveData>,
   path: Path,
   initialOrMove: Initial,
-): Square {
+): { king: Square; result: string } {
   const { pos, turn } = initialOrMove;
   const whiteToMove = turn === 'white';
   if (path.empty()) {
-    return nullthrows(
-      (whiteToMove ? undefined : pos.outcomeWithKing().king) ??
-        pos.kings.first(),
-    );
+    const { outcome, king } = pos.outcomeWithKing();
+    return {
+      king: (whiteToMove ? undefined : king) ?? nullthrows(pos.kings.first()),
+      result: makeOutcome(outcome),
+    };
   }
   const pgnChild = extend(pgnNode, [{ san: '' }]);
   if (!isChildNode(pgnChild)) {
@@ -41,11 +49,17 @@ function pickKing(
   const gameChild = nullthrows(
     gameNode.children.find((c) => c.data.path.last() === path.head()),
   );
-  const king = nullthrows(
-    pickKing(pgnChild, gameChild, path.tail(), gameChild.data),
+  const { king, result } = pickKing(
+    pgnChild,
+    gameChild,
+    path.tail(),
+    gameChild.data,
   );
   pgnChild.data.san = whiteToMove ? gameChild.data.san : `K${makeSquare(king)}`;
-  return whiteToMove
-    ? king
-    : nullthrows(pos.kings.intersect(kingAttacks(king)).first());
+  return {
+    king: whiteToMove
+      ? king
+      : nullthrows(pos.kings.intersect(kingAttacks(king)).first()),
+    result,
+  };
 }
