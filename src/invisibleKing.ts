@@ -1,5 +1,4 @@
 import {
-  makeUci,
   type Move,
   type Outcome,
   Position,
@@ -7,11 +6,8 @@ import {
   SquareSet,
 } from 'chessops';
 import { kingAttacks } from 'chessops/attacks';
-import { scalachessCharPair } from 'chessops/compat';
-import { makeFen, parseFen } from 'chessops/fen';
-import { makeSanAndPlay } from 'chessops/san';
-import type { Path } from 'lichess-pgn-viewer/path';
-import { Status, type Initial, type MoveData } from './types';
+import { parseFen } from 'chessops/fen';
+import Status from './status';
 
 export default class InvisibleKing extends Position {
   kings: SquareSet;
@@ -48,64 +44,34 @@ export default class InvisibleKing extends Position {
   }
 
   override variantOutcome(): Outcome | undefined {
+    return this.outcomeWithKing().outcome;
+  }
+
+  outcomeWithKing(): { outcome: Outcome | undefined; king?: Square } {
     if (this.turn === 'white') {
-      return this.halfmoves === 100 ? { winner: undefined } : undefined;
+      return {
+        outcome: this.halfmoves === 100 ? { winner: undefined } : undefined,
+      };
     }
-    let isMate = true;
+    let movableKing;
     for (const king of this.kings) {
       switch (this.status(king).status) {
         case Status.capture:
         case Status.stalemate:
-          return { winner: undefined };
+          return { outcome: { winner: undefined }, king };
         case Status.mate:
           break;
         default:
-          isMate = false;
+          movableKing = king;
       }
     }
-    return isMate ? { winner: 'white' } : undefined;
-  }
-
-  override toSetup() {
-    const setup = super.toSetup();
-    let king = this.board.kingOf('black');
-    if (king !== undefined && !this.kings.has(king)) {
-      setup.board.take(king);
-    }
-    for (king of this.kings) {
-      setup.board.set(king, { role: 'king', color: 'black' });
-    }
-    return setup;
-  }
-
-  toInitial(): Initial {
-    return {
-      fen: makeFen(this.toSetup()),
-      turn: this.turn,
-      check: this.isCheck(),
-      comments: [],
-      shapes: [],
-      clocks: {},
-      pos: this.clone(),
-    };
+    return movableKing === undefined
+      ? { outcome: { winner: 'white' } }
+      : { outcome: undefined, king: movableKing };
   }
 
   override isCheck() {
     return false;
-  }
-
-  playAndMakeData(move: Move, path: Path): MoveData {
-    const san = makeSanAndPlay(this, move);
-    return {
-      ...this.toInitial(),
-      path: path.append(scalachessCharPair(move)),
-      ply: (this.fullmoves - 1) * 2 + (this.turn === 'white' ? 0 : 1),
-      move,
-      san,
-      uci: makeUci(move),
-      startingComments: [],
-      nags: [],
-    };
   }
 
   override play(move: Move) {

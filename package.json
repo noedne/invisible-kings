@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "@badrap/result": "^0.2.13",
     "chessground": "^9.1.1",
     "chessops": "^0.14.1",
-    "lichess-pgn-viewer": "^2.1.0"
+    "lichess-pgn-viewer": "^2.1.0",
+    "nullthrows": "^1.1.1"
   },
   "overrides": {
     "chessops": "^0.14.1"

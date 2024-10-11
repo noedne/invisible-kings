@@ -45,6 +45,15 @@ export default tseslint.config(
           ignoreOverrideMethods: true,
         },
       ],
+      'consistent-return': 'off',
+      'default-case': 'off',
+      '@typescript-eslint/switch-exhaustiveness-check': [
+        'error',
+        {
+          allowDefaultCaseForExhaustiveSwitch: false,
+          requireDefaultForNonUnion: true,
+        },
+      ],
       'import/extensions': [
         'error',
         'ignorePackages',
@@ -69,7 +78,6 @@ export default tseslint.config(
           exceptAfterSingleLine: true,
         },
       ],
-      'no-alert': 'off',
       'no-param-reassign': [
         'error',
         {
