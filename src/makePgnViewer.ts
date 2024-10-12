@@ -1,25 +1,16 @@
-import type { Api } from 'chessground/api';
 import LichessPgnViewer from 'lichess-pgn-viewer';
 import type PgnViewerLichess from 'lichess-pgn-viewer/pgnViewer';
 import nullthrows from 'nullthrows';
 import cgState from './cgState';
 import InvisibleKing from './invisibleKing';
-import makeGame, { type Game, type GameConstructor } from './makeGame';
+import makeGame, { type GameConstructor } from './makeGame';
 import type { Initial } from './makeInitial';
 import makePgn from './makePgn';
 import Mode from './mode';
 
 const PARAM = 'pgn';
 
-export interface PgnViewer extends PublicInterface<PgnViewerLichess> {
-  game: Game;
-  ground: Api;
-  mode: Mode;
-  curPos(): InvisibleKing;
-  setPgn(pgn: string | null): void;
-}
-
-type PublicInterface<T> = { [K in keyof T]: T[K] };
+export type PgnViewer = PgnViewerLichess & ReturnType<typeof makeExtras>;
 
 export default function makePgnViewer(div: HTMLElement) {
   const lpv = LichessPgnViewer(div, {});
@@ -43,18 +34,21 @@ function makeExtras(lpv: PgnViewerLichess) {
   };
 }
 
-function curPos(this: PgnViewer) {
+function curPos(this: PgnViewer): InvisibleKing {
   return (this.curData() as Initial).pos;
 }
 
 function setPgn(this: PgnViewer, pgn: string | null) {
+  const isPlay = pgn !== null;
+  this.mode = isPlay ? Mode.play : Mode.edit;
+  this.opts.menu.practiceWithComputer = { enabled: isPlay };
+  this.opts.menu.analysisBoard = { enabled: isPlay };
   const emptyPath = this.game.pathAtMainlinePly(0);
-  if (pgn === null) {
-    this.mode = Mode.edit;
-    this.game.moves.children = [];
-  } else {
-    this.mode = Mode.play;
+  if (isPlay) {
     this.game = makeGame(this.game.constructor, emptyPath, pgn);
+  } else {
+    this.opts.pgn = '';
+    this.game.moves.children = [];
   }
   this.toPath(emptyPath);
 }
@@ -69,12 +63,13 @@ function setupImport(pgnViewer: PgnViewer) {
   }
 }
 
-function makeChanges(pgnViewer: PgnViewer) {
+function makeChanges(pgnViewer: PgnViewer): Partial<PgnViewer> {
   return {
     translate,
     goTo: newGoTo(pgnViewer),
     flip: flip.bind(pgnViewer),
     cgState: newCgState(pgnViewer),
+    analysisUrl,
     practiceUrl,
   };
 }
@@ -111,9 +106,11 @@ function newCgState(pgnViewer: PgnViewer): PgnViewer['cgState'] {
   return () => ({ ...oldCgState(), ...cgState.bind(pgnViewer)() });
 }
 
+function analysisUrl(this: PgnViewer) {
+  this.opts.pgn = makePgn(this.game, this.path);
+  return `https://www.chess.com/analysis${this.practiceUrl()}`;
+}
+
 function practiceUrl(this: PgnViewer) {
-  this.opts.pgn = this.mode === Mode.play ? makePgn(this.game, this.path) : '';
-  return this.opts.pgn
-    ? `?${new URLSearchParams({ [PARAM]: this.opts.pgn })}`
-    : '';
+  return `?${new URLSearchParams({ [PARAM]: this.opts.pgn })}`;
 }
