@@ -49,16 +49,21 @@ function onMove(this: PgnViewer, orig: Key, dest: Key): void {
     return;
   }
   const moveData = makeMove(this.curPos().clone(), move, this.path);
-  if (moveData.turn === 'white') {
+  const { path, pos, turn } = moveData;
+  if (turn === 'white') {
     moveData.san = '--';
-  } else if (!moveData.pos.isVariantEnd()) {
+    const king = pos.board.kingOf('black');
+    if (king !== undefined) {
+      pos.board.take(king);
+    }
+  } else if (!pos.isVariantEnd()) {
     this.mode = Mode.timer;
     setTimeout(moveBlack.bind(this), 1000);
   }
-  if (!this.game.nodeAt(moveData.path)) {
+  if (!this.game.nodeAt(path)) {
     extend(this.curNode(), [moveData]);
   }
-  this.toPath(moveData.path);
+  this.toPath(path);
 }
 
 function moveBlack(this: PgnViewer): void {
