@@ -49,9 +49,7 @@ export default class InvisibleKing extends Position {
 
   outcomeWithKing(): { outcome: Outcome | undefined; king?: Square } {
     if (this.turn === 'white') {
-      return {
-        outcome: this.halfmoves === 100 ? { winner: undefined } : undefined,
-      };
+      return { outcome: undefined };
     }
     let movableKing;
     for (const king of this.kings) {

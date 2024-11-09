@@ -22,6 +22,6 @@ export default function makeMove(
     san,
     uci: makeUci(move),
     startingComments: [],
-    nags: [],
+    nags: pos.halfmoves > 100 ? [4] : [], // display in red past 50-move rule
   };
 }
