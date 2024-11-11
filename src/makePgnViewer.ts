@@ -94,10 +94,27 @@ function newGoTo(pgnViewer: PgnViewer): PgnViewer['goTo'] {
 }
 
 function flip(this: PgnViewer) {
-  if (this.mode !== Mode.timer) {
-    this.setPgn(
-      this.mode === Mode.edit ? `[FEN "${this.ground.getFen()}"]` : null,
-    );
+  switch (this.mode) {
+    case Mode.edit: {
+      const fen = this.ground.getFen();
+      const pos = new InvisibleKing(fen);
+      if (pos.kings.isEmpty()) {
+        alert(
+          `Cannot place enemy king. ${
+            pos.board.white.size() > 7
+              ? 'Can you do it using only 7 pieces?'
+              : 'Congrats!'
+          }`,
+        );
+      } else {
+        this.setPgn(`[FEN "${fen}"]`);
+      }
+      break;
+    }
+    case Mode.play:
+      this.setPgn(null);
+      break;
+    case Mode.timer:
   }
 }
 

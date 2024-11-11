@@ -78,6 +78,7 @@ export default tseslint.config(
           exceptAfterSingleLine: true,
         },
       ],
+      'no-alert': 'off',
       'no-param-reassign': [
         'error',
         {
